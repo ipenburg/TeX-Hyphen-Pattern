@@ -17,7 +17,6 @@ use Module::Pluggable
 use File::Temp ();
 
 use Readonly ();
-## no critic qw(ProhibitCallsToUnexportedSubs)
 Readonly::Scalar my $EMPTY              => q{};
 Readonly::Scalar my $DASH               => q{-};
 Readonly::Scalar my $UNDERSCORE         => q{_};
@@ -35,27 +34,24 @@ Readonly::Scalar my $TEX_MESSAGE        => q{\\\message};
 
 Readonly::Scalar my $ERR_CANT_WRITE => q{Can't write to file '%s', stopped %s};
 
-Readonly::Scalar my $LOG_MATCH_MODULE => q{Looking for a match for '%s'};
-Readonly::Scalar my $LOG_NO_MATCH_CS =>
-  q{No case sensitive pattern match found for '%s'};
-Readonly::Scalar my $LOG_NO_MATCH_CI =>
-  q{No case insensitive pattern match found for '%s'};
-Readonly::Scalar my $LOG_NO_MATCH         => q{No pattern match found for '%s'};
-Readonly::Scalar my $LOG_MATCHES          => q{Pattern match(es) found '%s'};
-Readonly::Scalar my $LOG_CACHE_HIT        => q{Cache hit for '%s'};
-Readonly::Scalar my $LOG_CACHE_MISS       => q{Cache miss for '%s'};
-Readonly::Scalar my $LOG_FILE_UNDEF       => q{Returning undef file for '%s'};
-Readonly::Scalar my $LOG_PATCH_OPENOFFICE => q{Patching OpenOffice.org pattern};
-Readonly::Scalar my $LOG_PATCH_TEX_INPUT => q{Patching TeX pattern with \input};
-Readonly::Scalar my $LOG_PATCH_CARONS    => q{Patching "x encoded carons};
-Readonly::Scalar my $LOG_PATCH_TEX_MESSAGE =>
-  q{Patching TeX pattern with \message};
-Readonly::Scalar my $LOG_DELETING    => q{Deleting %d temporary file(s) %s};
-Readonly::Scalar my $LOG_DELETE_FAIL => q{Could not delete all temporary files};
-Readonly::Scalar my $LOG_DELETE_SUCCES => q{Deleted all temporary files};
-## no critic qw(CodeLayout::RequireASCII)
+Readonly::Hash my %LOG => (
+    MATCH_MODULE      => q{Looking for a match for '%s'},
+    NO_MATCH_CS       => q{No case sensitive pattern match found for '%s'},
+    NO_MATCH_CI       => q{No case insensitive pattern match found for '%s'},
+    NO_MATCH          => q{No pattern match found for '%s'},
+    MATCHES           => q{Pattern match(es) found '%s'},
+    CACHE_HIT         => q{Cache hit for '%s'},
+    CACHE_MISS        => q{Cache miss for '%s'},
+    FILE_UNDEF        => q{Returning undef file for '%s'},
+    PATCH_OPENOFFICE  => q{Patching OpenOffice.org pattern},
+    PATCH_TEX_INPUT   => q{Patching TeX pattern with \input},
+    PATCH_CARONS      => q{Patching "x encoded carons},
+    PATCH_TEX_MESSAGE => q{Patching TeX pattern with \message},
+    DELETING          => q{Deleting %d temporary file(s) %s},
+    DELETE_FAIL       => q{Could not delete all temporary files},
+    DELETE_SUCCES     => q{Deleted all temporary files},
+);
 Readonly::Hash my %CARON_MAP => ( q{c} => q{č}, q{s} => q{š}, q{z} => q{ž} );
-## use critic
 
 Log::Log4perl->easy_init($DEBUG);
 my $log = get_logger();
@@ -67,14 +63,14 @@ has '_plugs' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 sub filename {
     my ($self) = @_;
     if ( exists $self->_cache->{ $self->label } ) {
-        $log->debug( sprintf $LOG_CACHE_HIT, $self->label );
+        $log->debug( sprintf $LOG{CACHE_HIT}, $self->label );
         return $self->_cache->{ $self->label };
     }
-    $log->debug( sprintf $LOG_CACHE_MISS, $self->label );
+    $log->debug( sprintf $LOG{CACHE_MISS}, $self->label );
 
     # Return undef if the label could not be matched to a pattern:
     if ( !$self->_replug() ) {
-        $log->warn( sprintf $LOG_FILE_UNDEF, $self->label );
+        $log->warn( sprintf $LOG{FILE_UNDEF}, $self->label );
         return;
     }
     my $patterns = $self->_plugs->[0]->data();
@@ -86,7 +82,7 @@ sub filename {
 
     # Take care of \input command in TeX:
     while ( my ($module) = $patterns =~ /$TEX_INPUT_COMMAND/xmis ) {
-        $log->debug( sprintf $LOG_PATCH_TEX_INPUT, $module );
+        $log->debug( sprintf $LOG{PATCH_TEX_INPUT}, $module );
         $module = $PLUGGABLE . ucfirst $module;
         my $input_patterns = $module->new()->data();
         $patterns =~ s/$TEX_INPUT_COMMAND/$input_patterns/xmgis;
@@ -96,7 +92,7 @@ sub filename {
     my $caron = $CARON_ESCAPE . $CLASS_BEGIN . join $EMPTY,
       keys(%CARON_MAP) . $CLASS_END;
     if ( $patterns =~ /$caron/xmgis ) {
-        $log->debug($LOG_PATCH_CARONS);
+        $log->debug( $LOG{PATCH_CARONS} );
         ## no critic qw(ProhibitNoWarnings)
         no warnings 'uninitialized';
         $patterns =~ s{($caron)}{$CARON_MAP{$1}}xmgis;
@@ -105,13 +101,13 @@ sub filename {
 
     # Take care of \message command in TeX that TeX::Hyphen can't handle:
     if ( $patterns =~ /^$TEX_MESSAGE/xmgis ) {
-        $log->debug($LOG_PATCH_TEX_MESSAGE);
+        $log->debug( $LOG{PATCH_TEX_MESSAGE} );
         $patterns =~ s{^($TEX_MESSAGE)}{$TEX_COMMENT_LINE$1}xmgis;
     }
 
     # Patch OpenOffice.org pattern data for TeX::Hyphen:
     if ( $patterns !~ /\\patterns/xmgis ) {
-        $log->debug($LOG_PATCH_OPENOFFICE);
+        $log->debug( $LOG{PATCH_OPENOFFICE} );
         $patterns = $TEX_PATTERN_START . $patterns . $TEX_PATTERN_FINISH;
     }
 
@@ -140,19 +136,19 @@ sub _replug {
     $module = $PLUGGABLE . $module;
 
     # Find a match with decreasing strictness:
-    $log->debug( sprintf $LOG_MATCH_MODULE, $module );
+    $log->debug( sprintf $LOG{MATCH_MODULE}, $module );
     my @available = grep { /^$module$/xmgs } $self->available();
     if ( !@available ) {
-        $log->info( sprintf $LOG_NO_MATCH_CS, $module );
+        $log->info( sprintf $LOG{NO_MATCH_CS}, $module );
         @available = grep { /^$module$/xmgis } $self->available();
     }
     if ( !@available ) {
-        $log->warn( sprintf $LOG_NO_MATCH_CI, $module );
+        $log->warn( sprintf $LOG{NO_MATCH_CI}, $module );
         @available = grep { /^$module/xmgis } $self->available();
     }
     @available = sort @available;
-    $log->info( sprintf $LOG_MATCHES, join q{, }, @available );
-    @available || $log->warn( sprintf $LOG_NO_MATCH, $module );
+    $log->info( sprintf $LOG{MATCHES}, join q{, }, @available );
+    @available || $log->warn( sprintf $LOG{NO_MATCH}, $module );
     $self->_plugs( [ map { $_->new() } @available ] );
     return 0 + @available;
 }
@@ -160,12 +156,13 @@ sub _replug {
 sub DESTROY {
     my ($self) = @_;
     my @temp_files = values %{ $self->_cache };
-    $log->debug( sprintf $LOG_DELETING,
+    $log->debug( sprintf $LOG{DELETING},
         ( 0 + @temp_files, join ', ', @temp_files ) );
     my $deleted = unlink @temp_files;
     ( $deleted != ( 0 + @temp_files ) )
-      ? $log->warn($LOG_DELETE_FAIL)
-      : $log->debug($LOG_DELETE_SUCCES);
+      ? $log->warn( $LOG{DELETE_FAIL} )
+      : $log->debug( $LOG{DELETE_SUCCES} );
+    return;
 }
 
 1;
