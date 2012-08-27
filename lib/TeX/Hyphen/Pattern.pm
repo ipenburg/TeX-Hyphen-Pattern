@@ -1,24 +1,14 @@
 package TeX::Hyphen::Pattern;    # -*- cperl; cperl-indent-level: 4 -*-
-use strict;
-use warnings;
-
-## no critic qw(ProhibitLongLines)
-# $Id: Pattern.pm 121 2009-08-17 07:08:57Z roland $
-# $Revision: 121 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/lib/TeX/Hyphen/Pattern.pm $
-# $Date: 2009-08-17 09:08:57 +0200 (Mon, 17 Aug 2009) $
-## use critic
-
+use Moose;
 use 5.006000;
 use utf8;
 
-our $VERSION = '0.05';
+our $VERSION = '0.100';
 
 use English '-no_match_vars';
 use Log::Log4perl qw(:easy get_logger);
 use Set::Scalar;
 use Encode;
-use Class::Meta::Express qw(class ctor has meta method);
 use Module::Pluggable
   sub_name    => '_available',
   search_path => ['TeX::Hyphen::Pattern'],
@@ -67,130 +57,116 @@ Readonly::Scalar my $LOG_DELETE_SUCCES => q{Deleted all temporary files};
 Readonly::Hash my %CARON_MAP => ( q{c} => q{č}, q{s} => q{š}, q{z} => q{ž} );
 ## use critic
 
-Log::Log4perl->easy_init($ERROR);
+Log::Log4perl->easy_init($DEBUG);
 my $log = get_logger();
 
-class {
+has 'label'  => ( is => 'rw', isa => 'Str',      default => $DEFAULT_LABEL );
+has '_cache' => ( is => 'rw', isa => 'HashRef',  default => sub { {} } );
+has '_plugs' => ( is => 'rw', isa => 'ArrayRef', default => sub { [] } );
 
-    meta 'tex_hyphen_pattern';
+sub filename {
+    my ($self) = @_;
+    if ( exists $self->_cache->{ $self->label } ) {
+        $log->debug( sprintf $LOG_CACHE_HIT, $self->label );
+        return $self->_cache->{ $self->label };
+    }
+    $log->debug( sprintf $LOG_CACHE_MISS, $self->label );
 
-    ctor 'new';
+    # Return undef if the label could not be matched to a pattern:
+    if ( !$self->_replug() ) {
+        $log->warn( sprintf $LOG_FILE_UNDEF, $self->label );
+        return;
+    }
+    my $patterns = $self->_plugs->[0]->data();
 
-    has label  => ( is => 'string',   default => $DEFAULT_LABEL );
-    has _cache => ( is => 'hashref',  default => {}, view => 'PRIVATE' );
-    has _plugs => ( is => 'arrayref', default => [], view => 'PRIVATE' );
+    # Strip comments to prevent parsing of commands in comments
+    ## no critic qw(RequireDotMatchAnything)
+    $patterns =~ s{^$TEX_COMMENT_LINE.*?$}{}gixm;
+    ## use critic
 
-    method filename => sub {
-        my ($self) = @_;
-        if ( exists $self->_cache->{ $self->label } ) {
-            $log->debug( sprintf $LOG_CACHE_HIT, $self->label );
-            return $self->_cache->{ $self->label };
-        }
-        $log->debug( sprintf $LOG_CACHE_MISS, $self->label );
+    # Take care of \input command in TeX:
+    while ( my ($module) = $patterns =~ /$TEX_INPUT_COMMAND/xmis ) {
+        $log->debug( sprintf $LOG_PATCH_TEX_INPUT, $module );
+        $module = $PLUGGABLE . ucfirst $module;
+        my $input_patterns = $module->new()->data();
+        $patterns =~ s/$TEX_INPUT_COMMAND/$input_patterns/xmgis;
+    }
 
-        # Return undef if the label could not be matched to a pattern:
-        if ( !$self->_replug() ) {
-            $log->warn( sprintf $LOG_FILE_UNDEF, $self->label );
-            return;
-        }
-        my $patterns = $self->_plugs->[0]->data();
+    # Take care of "x encoded carons:
+    my $caron = $CARON_ESCAPE . $CLASS_BEGIN . join $EMPTY,
+      keys(%CARON_MAP) . $CLASS_END;
+    if ( $patterns =~ /$caron/xmgis ) {
+        $log->debug($LOG_PATCH_CARONS);
+        ## no critic qw(ProhibitNoWarnings)
+        no warnings 'uninitialized';
+        $patterns =~ s{($caron)}{$CARON_MAP{$1}}xmgis;
+        ## use critic
+    }
 
-        # Strip comments to prevent parsing of commands in comments
-		## no critic qw(RequireDotMatchAnything)
-        $patterns =~ s{^$TEX_COMMENT_LINE.*?$}{}gixm;
-		## use critic
+    # Take care of \message command in TeX that TeX::Hyphen can't handle:
+    if ( $patterns =~ /^$TEX_MESSAGE/xmgis ) {
+        $log->debug($LOG_PATCH_TEX_MESSAGE);
+        $patterns =~ s{^($TEX_MESSAGE)}{$TEX_COMMENT_LINE$1}xmgis;
+    }
 
-        # Take care of \input command in TeX:
-        while ( my ($module) = $patterns =~ /$TEX_INPUT_COMMAND/xmis ) {
-            $log->debug( sprintf $LOG_PATCH_TEX_INPUT, $module );
-            $module = $PLUGGABLE . ucfirst $module;
-            my $input_patterns = $module->new()->data();
-            $patterns =~ s/$TEX_INPUT_COMMAND/$input_patterns/xmgis;
-        }
+    # Patch OpenOffice.org pattern data for TeX::Hyphen:
+    if ( $patterns !~ /\\patterns/xmgis ) {
+        $log->debug($LOG_PATCH_OPENOFFICE);
+        $patterns = $TEX_PATTERN_START . $patterns . $TEX_PATTERN_FINISH;
+    }
 
-        # Take care of "x encoded carons:
-        my $caron = $CARON_ESCAPE . $CLASS_BEGIN . join $EMPTY,
-          keys(%CARON_MAP) . $CLASS_END;
-        if ( $patterns =~ /$caron/xmgis ) {
-            $log->debug($LOG_PATCH_CARONS);
-			## no critic qw(ProhibitNoWarnings)
-			no warnings 'uninitialized';
-            $patterns =~ s{($caron)}{$CARON_MAP{$1}}xmgis;
-			## use critic
-        }
+    my $fh = File::Temp->new();
+    binmode $fh, $UTF8;
+    $fh->unlink_on_destroy(0);
+    print {$fh} $patterns
+      or $log->logdie( sprintf $ERR_CANT_WRITE, ( $fh->filename, $ERRNO ) );
+    my %cache = %{ $self->_cache };
+    $cache{ $self->label } = $fh->filename;
+    $self->_cache( {%cache} );
+    return $fh->filename;
+}
 
-        # Take care of \message command in TeX that TeX::Hyphen can't handle:
-        if ( $patterns =~ /^$TEX_MESSAGE/xmgis ) {
-            $log->debug($LOG_PATCH_TEX_MESSAGE);
-            $patterns =~ s{^($TEX_MESSAGE)}{$TEX_COMMENT_LINE$1}xmgis;
-        }
+sub available {
+    my ($self) = @_;
+    return map { ref $_ }
+      grep { $_->can('version') && ( $_->version == $VERSION ) }
+      map { $_->new() } $self->_available;
+}
 
-        # Patch OpenOffice.org pattern data for TeX::Hyphen:
-        if ( $patterns !~ /\\patterns/xmgis ) {
-            $log->debug($LOG_PATCH_OPENOFFICE);
-            $patterns = $TEX_PATTERN_START . $patterns . $TEX_PATTERN_FINISH;
-        }
+sub _replug {
+    my ($self) = @_;
+    my $module = ucfirst $self->label;
+    $module =~ s/$DASH/$UNDERSCORE/xmgis;
+    $module = $PLUGGABLE . $module;
 
-        my $fh = File::Temp->new();
-        binmode $fh, $UTF8;
-        $fh->unlink_on_destroy(0);
-        print {$fh} $patterns
-          or $log->logdie( sprintf $ERR_CANT_WRITE, ( $fh->filename, $ERRNO ) );
-        my %cache = %{ $self->_cache };
-        $cache{ $self->label } = $fh->filename;
-        $self->_cache( {%cache} );
-        return $fh->filename;
-    };
+    # Find a match with decreasing strictness:
+    $log->debug( sprintf $LOG_MATCH_MODULE, $module );
+    my @available = grep { /^$module$/xmgs } $self->available();
+    if ( !@available ) {
+        $log->info( sprintf $LOG_NO_MATCH_CS, $module );
+        @available = grep { /^$module$/xmgis } $self->available();
+    }
+    if ( !@available ) {
+        $log->warn( sprintf $LOG_NO_MATCH_CI, $module );
+        @available = grep { /^$module/xmgis } $self->available();
+    }
+    @available = sort @available;
+    $log->info( sprintf $LOG_MATCHES, join q{, }, @available );
+    @available || $log->warn( sprintf $LOG_NO_MATCH, $module );
+    $self->_plugs( [ map { $_->new() } @available ] );
+    return 0 + @available;
+}
 
-    method available => (
-        code => sub {
-            my ($self) = @_;
-            return map { ref $_ }
-              grep { $_->can('version') && ( $_->version == $VERSION ) }
-              map { $_->new() } $self->_available;
-        },
-        view => 'PUBLIC',
-    );
-
-    method _replug => (
-        code => sub {
-            my ($self) = @_;
-            my $module = ucfirst $self->label;
-            $module =~ s/$DASH/$UNDERSCORE/xmgis;
-            $module = $PLUGGABLE . $module;
-
-            # Find a match with decreasing strictness:
-            $log->debug( sprintf $LOG_MATCH_MODULE, $module );
-            my @available = grep { /^$module$/xmgs } $self->available();
-            if ( !@available ) {
-                $log->info( sprintf $LOG_NO_MATCH_CS, $module );
-                @available = grep { /^$module$/xmgis } $self->available();
-            }
-            if ( !@available ) {
-                $log->warn( sprintf $LOG_NO_MATCH_CI, $module );
-                @available = grep { /^$module/xmgis } $self->available();
-            }
-            @available = sort @available;
-            $log->info( sprintf $LOG_MATCHES, join q{, }, @available );
-            @available || $log->warn( sprintf $LOG_NO_MATCH, $module );
-            $self->_plugs( [ map { $_->new() } @available ] );
-            return 0 + @available;
-        },
-        view => 'PRIVATE',
-    );
-
-    method DESTROY => sub {
-        my ($self) = @_;
-        my @temp_files = values %{ $self->_cache };
-        $log->debug( sprintf $LOG_DELETING,
-            ( 0 + @temp_files, join ', ', @temp_files ) );
-        my $deleted = unlink @temp_files;
-        ( $deleted != ( 0 + @temp_files ) )
-          ? $log->warn($LOG_DELETE_FAIL)
-          : $log->debug($LOG_DELETE_SUCCES);
-    };
-
-};
+sub DESTROY {
+    my ($self) = @_;
+    my @temp_files = values %{ $self->_cache };
+    $log->debug( sprintf $LOG_DELETING,
+        ( 0 + @temp_files, join ', ', @temp_files ) );
+    my $deleted = unlink @temp_files;
+    ( $deleted != ( 0 + @temp_files ) )
+      ? $log->warn($LOG_DELETE_FAIL)
+      : $log->debug($LOG_DELETE_SUCCES);
+}
 
 1;
 __END__
@@ -204,7 +180,7 @@ patterns for use with TeX::Hyphen.
 
 =head1 VERSION
 
-This is version 0.04. To prevent plugging in of incompatible modules the
+This is version 0.100. To prevent plugging in of incompatible modules the
 version of the pluggable modules must be the same as this module.
 
 =head1 SYNOPSIS
@@ -269,7 +245,7 @@ distribution complies with them.
 
 =head1 DEPENDENCIES
 
-L<Class::Meta::Express|Class::Meta::Express>
+L<Moose|Moose>
 L<Encode|Encode>
 L<File::Temp|File::Temp>
 L<Log::Log4perl|Log::Log4perl>
@@ -318,16 +294,6 @@ The temporary file created by L<File::Temp|File::Temp> could not be written.
 
 =over 4
 
-=item * Empty subclass test fails, this is probably a
-L<Class::Meta::Express|Class::Meta::Express> issue. The empty subclass can't
-be empty, it needs at least:
-
-	use Class::Meta::Express;
-
-	class {
-		ctor 'new';
-	};
-
 =item * Subtags aren't handled: C<en> could pick C<en_US>, C<en_UK> or C<ena>
 (when Apali would be available) and this is silently ignored, it just does a
 match on the string and picks what partly matches sorted, so using more exotic
@@ -360,7 +326,7 @@ Roland van Ipenburg, E<lt>ipenburg@xs4all.nlE<gt>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright (C) 2009 by Roland van Ipenburg
+Copyright 2012 by Roland van Ipenburg
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,

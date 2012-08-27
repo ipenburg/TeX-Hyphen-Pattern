@@ -1,6 +1,7 @@
 Revision history for TeX-Hyphen-Pattern
 
 0.100 Mon Aug 27 13:52:34
+    - Refactored from Class::Meta::Express to Moose
     - Refactored from ExtUtils::MakeMaker to Module::Build
     
 0.05  Fri Mar 26 08:12:32
