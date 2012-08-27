@@ -1,6 +1,6 @@
 Changes
 MANIFEST
-Makefile.PL
+Build.PL
 README
 SIGNATURE
 t/00_base.t

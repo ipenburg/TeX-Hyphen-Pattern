@@ -1,5 +1,8 @@
 Revision history for TeX-Hyphen-Pattern
 
+0.100 Mon Aug 27 13:52:34
+    - Refactored from ExtUtils::MakeMaker to Module::Build
+    
 0.05  Fri Mar 26 08:12:32
        Added as_IN Assamese
        Added bn_IN Bengali
@@ -17,8 +20,8 @@ Revision history for TeX-Hyphen-Pattern
        Added tk Turkmen
 
 0.04  Mon Aug 17 08:12:32
-	   Work around "x encoded carons RT#48763
-	   Work around \message in pattern so Hu.pm and De_*.pm are included
+       Work around "x encoded carons RT#48763
+       Work around \message in pattern so Hu.pm and De_*.pm are included
        Made svn expand keywords
        Tuned author tests
 
