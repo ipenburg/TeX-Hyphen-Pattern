@@ -1,8 +1,3 @@
-# $Id: 15_spell.t 102 2009-07-30 14:48:55Z roland $
-# $Revision: 102 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/t/15_spell.t $
-# $Date: 2009-07-30 16:48:55 +0200 (Thu, 30 Jul 2009) $
-
 use strict;
 use warnings;
 use utf8;
@@ -24,11 +19,17 @@ if ($EVAL_ERROR) {
 Test::Spelling::add_stopwords(<DATA>);
 Test::Spelling::all_pod_files_spelling_ok();
 __DATA__
-Ipenburg
-internet
-tex
-Esperanto
-Coptic
 Apali
-subtags
+CPAN
+Coptic
+Esperanto
+Ipenburg
 OpenOffice.org
+RT
+Readonly
+cpan
+internet
+org
+rt
+subtags
+tex

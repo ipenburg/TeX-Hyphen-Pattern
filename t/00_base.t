@@ -1,8 +1,3 @@
-# $Id: 00_base.t 119 2009-08-17 05:49:22Z roland $
-# $Revision: 119 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/t/00_base.t $
-# $Date: 2009-08-17 07:49:22 +0200 (Mon, 17 Aug 2009) $
-
 use strict;
 use warnings;
 

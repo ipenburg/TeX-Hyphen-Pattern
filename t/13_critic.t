@@ -1,8 +1,3 @@
-# $Id: 13_critic.t 102 2009-07-30 14:48:55Z roland $
-# $Revision: 102 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/t/13_critic.t $
-# $Date: 2009-07-30 16:48:55 +0200 (Thu, 30 Jul 2009) $
-
 use strict;
 use warnings;
 use utf8;

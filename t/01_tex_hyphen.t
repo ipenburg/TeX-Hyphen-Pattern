@@ -1,9 +1,3 @@
-## no critic qw(RequireExplicitPackage ProhibitCallsToUndeclaredSubs)
-# $Id: 01_tex_hyphen.t 119 2009-08-17 05:49:22Z roland $
-# $Revision: 119 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/t/01_tex_hyphen.t $
-# $Date: 2009-08-17 07:49:22 +0200 (Mon, 17 Aug 2009) $
-
 use strict;
 use warnings;
 use utf8;
