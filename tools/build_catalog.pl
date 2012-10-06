@@ -2,19 +2,12 @@
 use strict;
 use warnings;
 
-## no critic qw(ProhibitLongLines)
-# $Id: build_catalog.pl 119 2009-08-17 05:49:22Z roland $
-# $Revision: 119 $
-# $HeadURL: svn+ssh://ipenburg.xs4all.nl/srv/svnroot/rhonda/trunk/TeX-Hyphen-Pattern/tools/build_catalog.pl $
-# $Date: 2009-08-17 07:49:22 +0200 (Mon, 17 Aug 2009) $
-## use critic
-
-# Copyright 2009 Roland van Ipenburg
+# Copyright 2012 Roland van Ipenburg
 
 use 5.006000;
 use utf8;
 
-our $VERSION = '0.04';
+our $VERSION = '0.100';
 
 use Encode;
 use Carp qw(croak);
