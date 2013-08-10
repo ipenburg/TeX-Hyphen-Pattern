@@ -1,14 +1,12 @@
-package TeX::Hyphen::Pattern;    # -*- cperl; cperl-indent-level: 4 -*-
+package TeX::Hyphen::Pattern 0.100;    # -*- cperl; cperl-indent-level: 4 -*-
 use Moose;
-use 5.006000;
+use 5.014000;
 use utf8;
-
-our $VERSION = '0.100';
 
 use English '-no_match_vars';
 use Log::Log4perl qw(:easy get_logger);
-use Set::Scalar;
-use Encode;
+use Set::Scalar ();
+use Encode ();
 use Module::Pluggable
   sub_name    => '_available',
   search_path => ['TeX::Hyphen::Pattern'],
@@ -53,7 +51,7 @@ Readonly::Hash my %LOG => (
 );
 Readonly::Hash my %CARON_MAP => ( q{c} => q{č}, q{s} => q{š}, q{z} => q{ž} );
 
-Log::Log4perl->easy_init($DEBUG);
+Log::Log4perl->easy_init($ERROR);
 my $log = get_logger();
 
 has 'label'  => ( is => 'rw', isa => 'Str',      default => $DEFAULT_LABEL );
@@ -125,7 +123,7 @@ sub filename {
 sub available {
     my ($self) = @_;
     return map { ref $_ }
-      grep { $_->can('version') && ( $_->version == $VERSION ) }
+      grep { $_->can('version') && ( $_->version == $TeX::Hyphen::Pattern::VERSION ) }
       map { $_->new() } $self->_available;
 }
 

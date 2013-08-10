@@ -13,7 +13,6 @@ t/11_test-coverage.t
 t/12_manifest.t
 t/13_critic.t
 t/14_kwalitee.t
-t/15_spell.t
 t/perlcriticrc
 tools/build_catalog.pl
 tools/build_catalog_from_ctan.pl

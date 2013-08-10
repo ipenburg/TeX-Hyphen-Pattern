@@ -5,8 +5,8 @@ use utf8;
 use English;
 use Test::More;
 
-if ( not $ENV{TEST_AUTHOR} ) {
-    my $msg = q{Author test. Set $ENV{TEST_AUTHOR} to a true value to run.};
+if ( not $ENV{AUTHOR_TESTING} ) {
+    my $msg = q{Author test. Set $ENV{AUTHOR_TESTING} to a true value to run.};
     plan( skip_all => $msg );
 }
 
@@ -22,6 +22,7 @@ Test::TestCoverage::test_coverage("TeX::Hyphen::Pattern");
 my $obj = TeX::Hyphen::Pattern->new();
 $obj->label( q{nl} );
 $obj->filename();
+$obj->meta();
 $obj->DESTROY();
 
 Test::TestCoverage::ok_test_coverage('TeX::Hyphen::Pattern');

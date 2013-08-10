@@ -8,7 +8,7 @@ if (!eval { require TeX::Hyphen; 1 } ) {
 	plan skip_all => q{TeX::Hyphen required for testing compatibility};
 }
 
-$ENV{TEST_AUTHOR} && eval { require Test::NoWarnings };
+$ENV{AUTHOR_TESTING} && eval { require Test::NoWarnings };
 
 use TeX::Hyphen::Pattern;
 my $thp    = TeX::Hyphen::Pattern->new();
@@ -24,10 +24,10 @@ for my $label (@labels) {
     isnt( $words, $broken, qq{using '$label' in TeX::Hyphen} );
 }
 
-my $msg = 'Author test. Set $ENV{TEST_AUTHOR} to a true value to run.';
+my $msg = 'Author test. Set $ENV{AUTHOR_TESTING} to a true value to run.';
 SKIP: {
-    skip $msg, 1 unless $ENV{TEST_AUTHOR};
+    skip $msg, 1 unless $ENV{AUTHOR_TESTING};
 }
-$ENV{TEST_AUTHOR} && Test::NoWarnings::had_no_warnings();
+$ENV{AUTHOR_TESTING} && Test::NoWarnings::had_no_warnings();
 
 1;
