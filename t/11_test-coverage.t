@@ -23,6 +23,7 @@ my $obj = TeX::Hyphen::Pattern->new();
 $obj->label( q{nl} );
 $obj->filename();
 $obj->meta();
+$obj->packaged();
 $obj->DESTROY();
 
 Test::TestCoverage::ok_test_coverage('TeX::Hyphen::Pattern');
