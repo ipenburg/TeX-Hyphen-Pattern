@@ -89,13 +89,8 @@ sub filename {
     # Take care of "x encoded carons:
     my $caron = $CARON_ESCAPE . $CLASS_BEGIN . join $EMPTY,
       keys(%CARON_MAP) . $CLASS_END;
-    if ( $patterns =~ /$caron/xmgis ) {
-        $log->debug( $LOG{PATCH_CARONS} );
-        ## no critic qw(ProhibitNoWarnings)
-        no warnings 'uninitialized';
-        $patterns =~ s{($caron)}{$CARON_MAP{$1}}xmgis;
-        ## use critic
-    }
+    $log->debug( $LOG{PATCH_CARONS} );
+    $patterns =~ s{($caron)}{defined $1 ? $CARON_MAP{$1} : $EMPTY}exmgis;
 
     # Take care of \message command in TeX that TeX::Hyphen can't handle:
     if ( $patterns =~ /^$TEX_MESSAGE/xmgis ) {
@@ -123,8 +118,15 @@ sub filename {
 sub available {
     my ($self) = @_;
     return map { ref $_ }
-      grep { $_->can('version') && ( $_->version == $TeX::Hyphen::Pattern::VERSION ) }
-      map { $_->new() } $self->_available;
+    	grep {
+			$_->can('version')
+		 	&& ( $_->version == $TeX::Hyphen::Pattern::VERSION )
+		} map { $_->new() } $self->_available;
+}
+
+sub packaged {
+    my ($self) = @_;
+    return $self->_available;
 }
 
 sub _replug {
@@ -222,6 +224,10 @@ different hyphenation rules we talk about patterns and not just languages.
 =item $pattern-E<gt>available();
 
 Returns a list of the available patterns.
+
+=item $pattern-E<gt>packaged();
+
+Returns a list of the available patterns. (alias for available)
 
 =item $pattern-E<gt>filename();
 
