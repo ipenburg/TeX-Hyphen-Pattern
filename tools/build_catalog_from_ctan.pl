@@ -1,11 +1,11 @@
 #!/usr/bin/env perl -w    # -*- cperl -*-
 use strict;
 use warnings;
-
-# Copyright 2014 Roland van Ipenburg
-
+use 5.014000;
 use utf8;
-use 5.010000;
+
+# Copyright 2015 Roland van Ipenburg
+
 use Archive::Zip qw( :ERROR_CODES :CONSTANTS );
 use Carp qw(croak);
 use Encode qw(encode);
@@ -21,18 +21,19 @@ our $VERSION = 0.01;
 use Readonly;
 
 ## no critic qw(prohibitCallsToUnexportedSubs)
-Readonly::Scalar my $ZIP    => q{http://mirror.ctan.org/language/hyphenation-utf8.zip};
-Readonly::Scalar my $PREFIX => q{../};
-Readonly::Scalar my $TARGET => q{lib/TeX/Hyphen/Pattern/};
+Readonly::Scalar my $ZIP =>
+  q{http://mirror.ctan.org/language/hyphenation-utf8.zip};
+Readonly::Scalar my $PREFIX      => q{../};
+Readonly::Scalar my $TARGET      => q{lib/TeX/Hyphen/Pattern/};
 Readonly::Scalar my $TARGET_PATH => File::Spec->catdir( $PREFIX, $TARGET );
-Readonly::Scalar my $MANIFEST => File::Spec->catdir( $PREFIX, q{MANIFEST} );
-Readonly::Scalar my $PM_EXT   => q{.pm};
-Readonly::Scalar my $EMPTY    => q{};
-Readonly::Scalar my $DASH     => q{-};
-Readonly::Scalar my $UNDERSCORE => q{_};
-Readonly::Scalar my $NEWLINE    => qq{\n};
+Readonly::Scalar my $MANIFEST    => File::Spec->catdir( $PREFIX, q{MANIFEST} );
+Readonly::Scalar my $PM_EXT      => q{.pm};
+Readonly::Scalar my $EMPTY       => q{};
+Readonly::Scalar my $DASH        => q{-};
+Readonly::Scalar my $UNDERSCORE  => q{_};
+Readonly::Scalar my $NEWLINE     => qq{\n};
 
-Readonly::Scalar my $FIND_LOCALE => qr{ .*/hyph-([^.]+)\.lic\.txt$ }smx;
+Readonly::Scalar my $FIND_LOCALE => qr{ .*/hyph-([^.]+)[.]lic[.]txt$ }smx;
 
 Readonly::Array my @SECTIONS => qw(lic pat hyp);
 ## use critic
@@ -44,22 +45,26 @@ if (
 ## no critic qw(prohibitCallsToUnexportedSubs)
     LWP::Simple::is_success(
 ## use critic
-        $rc = LWP::Simple::getstore( $ZIP, $zip_name )
+        $rc = LWP::Simple::getstore( $ZIP, $zip_name ),
     )
   )
 {
     $zip = Archive::Zip->new();
     if ( $zip->read($zip_name) != AZ_OK ) {
         unlink $zip_name;
+        ## no critic qw(RequireUseOfExceptions)
         croak 'read error';
+        ## use critic
     }
 }
 else {
-	die "No success, $rc";
+    ## no critic qw(RequireUseOfExceptions)
+    croak "No success, $rc";
+    ## use critic
 }
 
 ## no critic qw(prohibitCallsToUnexportedSubs)
-my $template = File::Slurp::read_file( \*DATA, binmode => ':utf8');
+my $template = File::Slurp::read_file( \*DATA, 'binmode' => ':utf8' );
 ## use critic
 
 sub get_locale {
@@ -79,7 +84,8 @@ sub get_data {
     foreach my $section (@SECTIONS) {
         my $member =
           shift @{ [ $zip->membersMatching(qq{/hyph-$locale.$section.txt}) ] };
-        push @sections, Encode::decode(q{utf8}, ($member->contents || $EMPTY));
+        push @sections,
+          Encode::decode( q{utf8}, ( $member->contents || $EMPTY ) );
     }
     return @sections;
 }
@@ -88,14 +94,14 @@ my $filename;
 my $package;
 
 # Prepare to rewrite the MANIFEST including the generated files:
-my @files = File::Slurp::read_file($MANIFEST, binmode => ':utf8');
+my @files = File::Slurp::read_file( $MANIFEST, 'binmode' => ':utf8' );
 ## no critic qw(ProhibitCallsToUnexportedSubs RequireExplicitInclusion ProhibitCallsToUndeclaredSubs)
 my $manifest = IO::File->new(qq{> $MANIFEST});
 ## use critic
 foreach my $file (@files) {
     next if ( $file =~ m{$TARGET.*$PM_EXT}xsmg );
     ## no critic qw(RequireUseOfExceptions)
-    print $manifest $file or croak "Can't write, stopped $!";
+    print {$manifest} $file or croak "Can't write, stopped $ERRNO";
     ## use critic
 }
 
@@ -106,23 +112,28 @@ while ( my $locale = shift @locales ) {
     my $target = IO::File->new( q{> } . $filename );
     $target->binmode(q{utf8});
     if ( defined $target ) {
-        my $source = sprintf $template, ( $package, $package, get_data($locale) );
-		my $destination;
-		my $error = Perl::Tidy::perltidy(
-			'source' => \$source,
-			'destination' => \$destination,
-		);
-		print {$target} $destination
+        my $source = sprintf $template,
+          ( $package, $package, get_data($locale) );
+        my $destination;
+        my $error = Perl::Tidy::perltidy(
+            'source'      => \$source,
+            'destination' => \$destination,
+        );
+        print {$target} $destination
           ## no critic qw(RequireUseOfExceptions)
           or croak "Can't write, stopped $ERRNO";
         ## use critic
         $target->close;
         $filename =~ s{^$PREFIX}{}smx;
         print {$manifest} $filename, $NEWLINE
+          ## no critic qw(RequireUseOfExceptions)
           or croak qq{Can't write $filename, stopped $ERRNO};
+        ## use critic
     }
     else {
+        ## no critic qw(RequireUseOfExceptions)
         croak qq{Can't open $filename, stopped $ERRNO};
+        ## use critic
     }
 }
 
