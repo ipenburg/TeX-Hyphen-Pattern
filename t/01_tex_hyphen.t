@@ -1,33 +1,130 @@
+#!/usr/bin/env perl -w    # -*- cperl -*-
 use strict;
 use warnings;
+use 5.014000;
 use utf8;
 
 use open ':std', ':locale';
 use Test::More;
-if (!eval { require TeX::Hyphen; 1 } ) {
-	plan skip_all => q{TeX::Hyphen required for testing compatibility};
+
+our $VERSION = 0.100;
+
+eval {
+    require TeX::Hyphen;
+    1;
+} or do {
+    plan 'skip_all' => q{TeX::Hyphen required for testing compatibility};
+};
+
+if ( $ENV{'AUTHOR_TESTING'} ) {
+    eval {
+        require Test::NoWarnings;
+        1;
+    } or do {
+        diag q{Not testing for warnings};
+    };
 }
 
-$ENV{AUTHOR_TESTING} && eval { require Test::NoWarnings };
-
+my %todos = (
+    'As'            => 'Assamese',
+    'Bg'            => 'Bulgarian',
+    'Bg_t2a'        => 'Bulgarian t2a encoded',
+    'Bn'            => 'Bengali',
+    'Cop'           => 'Very experimental coptic for "copto" font',
+    'El_monoton'    => 'Modern Monotonic Greek',
+    'El_polyton'    => 'Modern Polytonic Greek',
+    'Eo'            => 'Esperanto',
+    'Grc'           => 'Ancient Greek',
+    'Gu'            => 'Gujarati',
+    'Hi'            => 'Hindi',
+    'Hy'            => 'Armenian',
+    'Ka'            => 'Georgian',
+    'Ka_t8m'        => 'Georgian t8m encoded',
+    'Kn'            => 'Kannada',
+    'Ml'            => 'Malayalam',
+    'Mn_cyrl'       => 'Mongolian',
+    'Mn_cyrl_t2a'   => 'Mongolian t2a encoded',
+    'Mn_cyrl_x_lmc' => 'Mongolian LMC encoded',
+    'Mr'            => 'Marathi',
+    'Mul_ethi'      => 'Experimental Ethiopic',
+    'Or'            => 'Oriya',
+    'Pa'            => 'Panjabi',
+    'Ru'            => 'Russian',
+    'Ru_t2a'        => 'Russian t2a encoded',
+    'Sh'            => 'Serbocroatian',
+    'Sh_cyrl'       => 'Serbocroatian in Cyrillic',
+    'Sh_cyrl_t2a'   => 'Serbian in Cyrillic t2a encoded',
+    'Sr'            => 'Serbian',
+    'Sr_cyrl'       => 'Serbian in Cyrillic',
+    'Ta'            => 'Tamil',
+    'Te'            => 'Telugu',
+    'Th'            => 'Thai',
+    'Th_lth'        => 'Thai lth encoded',
+    'Uk'            => 'Ukranian',
+);
 use TeX::Hyphen::Pattern;
-my $thp    = TeX::Hyphen::Pattern->new();
-my @labels = sort map { m/.*::(.*)/; $1 } $thp->available;
-my $words   = q{Supercalifragilisticexpialidocious minuskloj Rechtschreibung ຫໍຄອຍ​ເມືອງບາເບນ ಪದಗಳನ್ನು ಬಳಸುತ್ತಿದ್ದರು ພາສາລາວ српски অসমীয়া আখৰ தமிழ் அரிச்சுவடி  پنجابی ਪੰਜਾਬੀ  മലയാളലിപി ἐτελείετο ወጻድቃነ፡  παϊδάκια ⲘⲉⲧⲢⲉⲙ̀ⲛⲭⲏⲙⲓ Монгол бичиг հայերէն  ಕನ್ನಡ  తెలుగు български език ଉତ୍କଳାକ୍ଷର ગુજરાતી લિપિ  श्रीचावुण्डराज বাংলা লিপি अर्धातात्सम देवनागरी Upplýsingatæknifyrirtæki уламжлалаа азбука ὀφειλήματα οφειλήματα ഉപയോഗിയ്ക്കുന്നുമുണ്ടു് चंद्रयान-प्रथम শান্তিনিকেতনে ગુજરાતમાં தென்னாபிரிக்கா దేశాభివృద్ధి ବ୍ୟବାହାରକାରୀ ਹੋਵੇਗੀ।ਵਿਕਿਪੀਡਿਆ};
+my $SPACE = q{ };
+my $thp   = TeX::Hyphen::Pattern->new();
 
-plan tests => ( 0 + @labels ) + 1;
+sub namespace_leaf {
+    m/.*::(.*)/sxm;
+    if ( defined $1 ) {
+        return $1;
+    }
+}
+my @labels =
+  grep { not defined $todos{$_} } sort map { namespace_leaf } $thp->packaged;
+my @todos =
+  grep { defined $todos{$_} } sort map { namespace_leaf } $thp->packaged;
+
+# Currently we test every pattern against a set of words and fail if a pattern
+# doesn't manage to get a soft hyphen in. For every pattern that doesn't put a
+# hyphen in a generic word we add a word suited for that pattern.
+# But what if we had old pattern that worked and new patterns that are borken?
+# Manually check the differences.
+
+my %words = (
+    'generic'       => 'Supercalifragilisticexpialidocious',
+    'Icelandic'     => 'Upplýsingatæknifyrirtæki',
+    'AncientGreek'  => 'ὀφειλήματα οφειλήματα',
+    'Serbian'       => 'Реализовали',
+    'Serbocroation' => 'уламжлалаа',
+    'Sanskrit'      => 'देवनागरीदेवनागरी',
+    'Russian'       => 'уламжлалаа',
+    'ModernGreek'   => 'ὀφειλήματα οφειλήματα',
+);
+my $words = join $SPACE, values %words;
+
+plan 'tests' => ( 0 + @labels + @todos ) + 1 + 1;
+note( sprintf q{Number of patterns packaged: %d},  0 + $thp->packaged );
+note( sprintf q{Number of patterns available: %d}, 0 + @labels );
+isnt( 0 + @labels, 0, q{Number of patterns available} );
 for my $label (@labels) {
+    note($label);
     $thp->label($label);
     my $hyph = TeX::Hyphen->new( $thp->filename );
-	my $broken = join ' ', map { $hyph->visualize($_) } split / /, $words;
-    ( $broken ne $words ) && diag( sprintf '%10s: %s', ( $label, $broken ) );
-    isnt( $words, $broken, qq{using '$label' in TeX::Hyphen} );
+    my $broken = join q{ }, map { $hyph->visualize($_) } split / /sm, $words;
+    isnt( $words, $broken, qq{using pattern for '$label' in TeX::Hyphen} );
+}
+TODO: {
+    local $TODO = q{Pattern seems to be incompatible with TeX::Hyphen engine};
+    for my $label (@todos) {
+        note($label);
+        $thp->label($label);
+        my $hyph = TeX::Hyphen->new( $thp->filename );
+        my $broken = join q{ }, map { $hyph->visualize($_) } split / /sm,
+          $words;
+        isnt( $words, $broken, qq{using pattern for '$label' in TeX::Hyphen} );
+    }
 }
 
-my $msg = 'Author test. Set $ENV{AUTHOR_TESTING} to a true value to run.';
+my $msg =
+  'Author test. Set environment variable AUTHOR_TESTING} to enable this test.';
 SKIP: {
-    skip $msg, 1 unless $ENV{AUTHOR_TESTING};
+    if ( not $ENV{'AUTHOR_TESTING'} ) {
+        skip $msg, 1;
+    }
 }
-$ENV{AUTHOR_TESTING} && Test::NoWarnings::had_no_warnings();
+$ENV{'AUTHOR_TESTING'} && Test::NoWarnings::had_no_warnings();
 
 1;

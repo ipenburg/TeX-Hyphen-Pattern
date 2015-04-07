@@ -13,8 +13,8 @@ To install this module, run the following commands:
    ./Build test
    ./Build install
 
-The script tools/build_catalog.pl can be run to retrieve the current TeX
-hyphenation pattern sources and include them in the installation.
+The script tools/build_catalog_from_ctan.pl can be run to retrieve the current
+TeX hyphenation pattern sources and include them in the installation.
 
 DEPENDENCIES
 
@@ -34,7 +34,7 @@ COPYRIGHT AND LICENCE
 
 TeX and OpenOffice.org pattern files copyrighted by their individual owners.
 
-Copyright (C) 2012 by Roland van Ipenburg
+Copyright (C) 2015 by Roland van Ipenburg
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.14.0 or,

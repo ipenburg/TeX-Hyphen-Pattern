@@ -1,20 +1,19 @@
+#!/usr/bin/env perl -w    # -*- cperl -*-
 use strict;
 use warnings;
+use 5.014000;
 use utf8;
 
 use Test::More;
-use English qw(-no_match_vars);
 
-if ( not $ENV{AUTHOR_TESTING} ) {
-    my $msg = q{Author test. Set $ENV{AUTHOR_TESTING} to a true value to run.};
-    plan( skip_all => $msg );
+our $VERSION = 0.100;
+
+BEGIN {
+    if ( not $ENV{'RELEASE_TESTING'} ) {
+        plan 'skip_all' => 'these tests are for release candidate testing';
+    }
 }
 
-eval {
-    require Test::Kwalitee;
-    Test::Kwalitee->import( tests => [qw( -has_meta_yml)] );
-};
-if ($EVAL_ERROR) {
-	my $msg = q{Test::Kwalitee not installed; skipping};
-	plan( skip_all => $msg );
-}
+use Test::Kwalitee 'kwalitee_ok';
+kwalitee_ok();
+done_testing;

@@ -1,169 +1,161 @@
-#!perl -w    # -*- cperl; cperl-indent-level: 4 -*-
+#!/usr/bin/env perl -w    # -*- cperl; cperl-indent-level: 4 -*-
 use strict;
 use warnings;
 
-# Copyright 2012 Roland van Ipenburg
-
-use 5.006000;
 use utf8;
+use 5.014000;
 
-our $VERSION = '0.100';
+BEGIN { our $VERSION = '0.100'; }
 
-use Encode;
 use Carp qw(croak);
+use Cwd qw(abs_path);
+use Encode;
+use English qw(-no_match_vars);
+use File::Basename;
+use File::Find;
+use File::Slurp qw(read_file);
+use File::Temp;
+use Getopt::Long;
+use IO::File;
+use Log::Log4perl qw(:easy get_logger);
+use TeX::Hyphen;
+use SVN::Client;
 use URI;
 use URI::URL;
 use WWW::Mechanize;
-use IO::File;
-use File::Slurp qw(read_file);
 
 use Readonly;
 ## no critic qw(ProhibitCallsToUnexportedSubs)
 Readonly::Scalar my $EMPTY      => q{};
 Readonly::Scalar my $NEWLINE	=> qq{\n};
-Readonly::Scalar my $DASH       => qq{-};
-Readonly::Scalar my $UNDERSCORE => qq{_};
+Readonly::Scalar my $DASH       => q{-};
+Readonly::Scalar my $UNDERSCORE => q{_};
+Readonly::Scalar my $SLASH      => q{/};
 Readonly::Scalar my $HYPH_NAME     => q{(?:
 	(?:hyph[-_]|^)([^.?]+)\.(?:tex|dic|pat)
 )};
 #Readonly::Scalar my $CASE_CONFLICT => q{^en_(US|GB)$};
 Readonly::Scalar my $CASE_CONFLICT => q{^$};
-Readonly::Scalar my $INCOMPATIBLE => q{^(Cop|Eo|Hy)$};
+#Readonly::Scalar my $INCOMPATIBLE => q{^(Cop|Eo|Hy|Th|Te|Ta|Sr_cyrl|Sh_cyrl_t2a|Sh_cyrl|Pa|Or|Mul_ethi|Mr|Mn_cyrl_x_lmc|Mn_cyrl_t2a|Mn_cyrl|Ml|Kn|Ka_t8m|Ka|Hi|Gu|Grc|El_polyton|El_monoton|Quote_.*|.*_lth\b.*)$};
+Readonly::Scalar my $INCOMPATIBLE => q{^(Quote_.*)$};
 Readonly::Scalar my $PM_EXT       => q{.pm};
 Readonly::Scalar my $AUTOCHECK    => 1;
-Readonly::Scalar my $PREFIX       => q{../plain/};
+Readonly::Scalar my $PREFIX       => q{/../};
 Readonly::Scalar my $TARGET       => q{lib/TeX/Hyphen/Pattern/};
 Readonly::Scalar my $TARGET_PATH  => $PREFIX . $TARGET;
 Readonly::Scalar my $MANIFEST     => $PREFIX . q{MANIFEST};
 Readonly::Scalar my $ISO          => q{ISO};
 Readonly::Scalar my $ENCODINGS    => q{^(KOI8-R|ISO8859-(\d+))};
+Readonly::Scalar my $LOG_CONF    => q{build_catalog_log.conf};
+Readonly::Array my @DEBUG_LEVELS => ( $FATAL, $INFO, $WARN, $DEBUG );
 
 Readonly::Hash my %REPO    => (
-	plain	=> {
-		root	=> q{http://tug.org/svn/texhyphen/trunk/plain/},
-		filter	=> qr{\.pat\.txt\?revision=}xsmi,
-	},
 	utf		=> {
-		root	=> q{http://tug.org/svn/texhyphen/trunk/hyph-utf8/tex/generic/hyph-utf8/patterns/},
-		filter	=> qr{\.tex\?revision=}xsmi,
-	},
-  	ooo		=> {
-		root	=> q{http://svn.services.openoffice.org/ooo/trunk/dictionaries/},
-		filter	=> qr{([a-z]{2}_[A-Z]{2}|sr)}xsmi,
+		root	=> q{svn://tug.org/texhyphen/trunk/hyph-utf8},
+		filter	=> qr{\bhyph-.*.tex$}xsmi,
 	},
 );
+Readonly::Hash my %LOG    => (
+	EXPORT	=> q{Exporting from '%s' to '%s'},
+);
+Readonly::Array my @GETOPT_CONFIG =>
+  qw(no_ignore_case bundling auto_version auto_help);
+Readonly::Array my @GETOPTIONS  => (q{verbose|v+});
+Readonly::Hash my %OPTS_DEFAULT => ();
 ## use critic
 
-my $mech = WWW::Mechanize->new( autocheck => $AUTOCHECK );
+Getopt::Long::Configure(@GETOPT_CONFIG);
+my %opts = %OPTS_DEFAULT;
+Getopt::Long::GetOptions( \%opts, @GETOPTIONS ) or Pod::Usage::pod2usage(2);
 
-my $repo = $REPO{utf};
-$mech->get($repo->{root});
-my @links =
-  map { URI::URL->new_abs( ${$_}[0], $mech->base ) }
-  $mech->find_all_links( tag => "a", url_abs_regex => $repo->{filter} );
+if ( -r $LOG_CONF ) {
+## no critic qw(ProhibitCallsToUnexportedSubs)
+    Log::Log4perl::init_and_watch($LOG_CONF);
+## use critic
+}
+else {
+## no critic qw(ProhibitCallsToUnexportedSubs)
+    Log::Log4perl::easy_init($ERROR);
+## use critic
+}
+my $log = Log::Log4perl->get_logger( File::Basename::basename $PROGRAM_NAME );
+$log->level(
+    $DEBUG_LEVELS[
+      (
+          ( $opts{'verbose'} || 0 ) > $#DEBUG_LEVELS
+          ? $#DEBUG_LEVELS
+          : $opts{'verbose'}
+      )
+      || 0
+    ],
+);
 
-$repo = $REPO{ooo};
-$mech->get($repo->{root});
-foreach my $link (
-	$mech->find_all_links( tag => "a", text_regex => $repo->{filter} )
-) {
-    $mech->get( $link->url_abs );
-    push @links,
-      map { URI::URL->new_abs( ${$_}[0], $mech->base ) }
-      $mech->find_all_links( tag => "a", url_abs_regex => qr/$HYPH_NAME/xsmi );
+my $template = $EMPTY;
+while (<DATA>) {
+	$template .= $_;
 }
 
-$repo = $REPO{plain};
-$mech->get($repo->{root});
-push @links,
-  map { URI::URL->new_abs( ${$_}[0], $mech->base ) }
-  $mech->find_all_links( tag => "a", url_abs_regex => $repo->{filter} );
+my $ctx = new SVN::Client;
+my $rel = dirname(abs_path(__FILE__) ) . $SLASH;
 
-my %patterns = ();
+my $dir = File::Temp->newdir();
+$log->debug(sprintf($LOG{EXPORT}, $REPO{utf}{root}, $dir->dirname) );
+$ctx->export($REPO{utf}{root}, $dir->dirname, 'HEAD', 1);
 
-if (@links) {
-
-    # Prepare to rewrite the MANIFEST including the generated files:
-    #my @files = read_file($MANIFEST);
-    ## no critic qw(ProhibitCallsToUnexportedSubs RequireExplicitInclusion ProhibitCallsToUndeclaredSubs)
-    #my $manifest = new IO::File "> $MANIFEST";
+# Prepare to rewrite the MANIFEST including the generated files:
+my @files = read_file(qq{$rel$MANIFEST});
+## no critic qw(ProhibitCallsToUnexportedSubs RequireExplicitInclusion ProhibitCallsToUndeclaredSubs)
+my $manifest = new IO::File "> $rel$MANIFEST";
+## use critic
+foreach my $file (@files) {
+    next if ( $file =~ m{$TARGET.*$PM_EXT}xsmg );
+    ## no critic qw(RequireUseOfExceptions)
+    print $manifest $file or croak "Can't write, stopped $!";
     ## use critic
-    #foreach my $file (@files) {
-    #    next if ( $file =~ m{$TARGET.*$PM_EXT}xsmg );
-    #    ## no critic qw(RequireUseOfExceptions)
-    #    print $manifest $file or croak "Can't write, stopped $!";
-    #    ## use critic
-    #}
+}
 
-    # Read the printf template for the module:
-    my $template = $EMPTY;
-    while (<DATA>) {
-        $template .= $_;
-    }
-
-    # Handle the links:
-    foreach my $link (@links) {
-		my $repo = url2repo($link);
-		next if ($repo ne q{plain});
-		my $package = url2locale($link);
+find(\&patterns, ($dir->dirname) );
+sub patterns {
+	if (/^hyph-(?<locale>.*)\.tex$/gsmx) {
+		my $locale = $+{locale};
+		$log->debug(qq{Found file '$_' as pattern for locale '$locale'});
+		my $hyp = new TeX::Hyphen($File::Find::name);
+		my $package = $locale;
         $package =~ s/$DASH/$UNDERSCORE/xmgis;
-
-        # Prevent conflicts between en_US and en_us on HFS+:
-        next if ( $package =~ /$CASE_CONFLICT/xmgs );
+        $package =~ s/\./$UNDERSCORE/xmgis;
         $package = ucfirst $package;
-        next if ( $package =~ /$INCOMPATIBLE/xmgs );
+        return if ($package =~ /$CASE_CONFLICT/xmgs);
         my $filename = $package . $PM_EXT;
-  		my $url = $link;
-		$url =~ s{\&view=markup}{}; 
-        $mech->get($url);
-        my $content = $mech->content;
+        my $content = read_file($File::Find::name, binmode => ':utf8');
         if ( my ($encoding) = $content =~ /$ENCODINGS/xmis ) {
             $encoding =~ s/($ISO)(\d)/$1$DASH$2/xmgis;
             $content = Encode::decode( $encoding, $content );
         }
-		my $lic = $EMPTY;
-		if ($repo eq q{plain}) {
-			$lic = $url;
-			$lic =~ s{(\.)(pat)(\.)}{$1lic$3}gsmx;
-			$mech->get($lic);
-        	$lic = $NEWLINE . q{=begin text} . $NEWLINE .
-				$mech->content .
-				$NEWLINE . q{=end text} . $NEWLINE;
-		}
         ## no critic qw(ProhibitCallsToUnexportedSubs RequireExplicitInclusion ProhibitCallsToUndeclaredSubs)
-        my $fh = new IO::File "> $TARGET_PATH$filename";
+        my $fh = new IO::File "> $rel$TARGET_PATH$filename";
         ## use critic
-		$fh->binmode(":utf8");
-
         if ( defined $fh ) {
-            printf $fh $template, ( $package, $VERSION, $package, $package, $link->as_iri, $lic, $content )
+			$fh->binmode(":utf8");
+			my $svn_path = $File::Find::name;
+			my $svn_root = $dir->dirname;
+			$svn_path =~ s{$svn_root}{}gsmx;
+			my $src = $REPO{utf}{root} . $svn_path;
+			my $ver = ($package =~ /$INCOMPATIBLE/xmgs) ? 0 : $::VERSION;
+            printf $fh $template, ( $package, $ver, $package, $package, $src, $content )
               ## no critic qw(RequireUseOfExceptions)
               or croak "Can't write, stopped $!";
             ## use critic
             $fh->close;
+			print $manifest $TARGET, $filename, $NEWLINE;
         }
 		else {
 			die "Can't open $TARGET_PATH$filename, $!";
 		}
-        #print $manifest $TARGET, $filename, $NEWLINE;
-    }
-    #$manifest->close;
-}
-
-sub url2locale {
-	my $url = shift;
-    my ($locale) = pop(@{[$url->path_segments]}) =~ m{$HYPH_NAME}xms;
-	return $locale;
-}
-
-sub url2repo {
-	my $url = shift;
-	while (my ($key, $value) = each %REPO) {
-		if (index($url, $value->{root}) == 0) {
-			return $key;
-		}
 	}
 }
+$manifest->close;
+
+=pod
 
 =encoding utf8
 
@@ -179,6 +171,8 @@ conflict on HFS+ when they only differ in case the OpenOffice.org source
 patterns for these locales are ignored.
 
 The DATA section in this file is used as a template to genereate the modules.
+
+Why does Th_lth fail? We don't do lth encoding?
 
 =cut
 
@@ -223,7 +217,10 @@ sub version {
 The copyright of the patterns is not covered by the copyright of this package
 since this pattern is generated from the source at
 L<%s>
-%s
+
+The copyright of the source can be found in the DATA section in the source of
+this package file.
+
 =cut
 
 __DATA__

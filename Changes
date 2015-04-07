@@ -1,8 +1,10 @@
 Revision history for TeX-Hyphen-Pattern
 
-0.100 Mon Aug 11 11:52:34
+0.100 Tue Apr 7 23:52:34 2015
     - Refactored from Class::Meta::Express to Moose
     - Refactored from ExtUtils::MakeMaker to Module::Build
+	- Removed patterns for Lo and Sr_latn
+	- Moved pattern for Zh_latn to Zh_latn_pinyin
     
 0.05  Fri Mar 26 08:12:32
        Added as_IN Assamese
