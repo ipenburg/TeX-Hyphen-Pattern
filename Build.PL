@@ -19,7 +19,7 @@ Module::Build->new(
         'version'           => 0,
     },
     build_requires => { 'Test::More' => 0.81, },
-    script_files   => [ qw(tools/build_catalog_from_ctan.pl), ],
+    script_files   => [ qw(tools/build_catalog.pl tools/build_catalog_from_ctan.pl), ],
     sign           => 1,
     meta_merge     => {
         resources => {
