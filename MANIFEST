@@ -3,11 +3,9 @@ Changes
 lib/TeX/Hyphen/Pattern/lgpl-2.1.txt
 lib/TeX/Hyphen/Pattern/lgpl-3.0.txt
 lib/TeX/Hyphen/Pattern/lppl.txt
-lib/TeX/Hyphen/Pattern.pm
 MANIFEST
 MANIFEST.SKIP
 README
-SIGNATURE
 t/00_base.t
 t/00_signature.t
 t/01_tex_hyphen.t
@@ -149,3 +147,5 @@ lib/TeX/Hyphen/Pattern/Tk.pm
 lib/TeX/Hyphen/Pattern/Tr.pm
 lib/TeX/Hyphen/Pattern/Uk.pm
 lib/TeX/Hyphen/Pattern/Zh_latn_pinyin.pm
+META.yml
+META.json

@@ -80,7 +80,7 @@ sub filename {
 
     # Take care of \input command in TeX:
     while ( my ($module) = $patterns =~ /$TEX_INPUT_COMMAND/xmis ) {
-        $log->debug( sprintf $LOG{'PATCH_TEX_INPUT'}, $module );
+        $log->debug( $LOG{'PATCH_TEX_INPUT'} );
         $module = $PLUGGABLE . ucfirst $module;
         my $input_patterns = $module->new()->data();
         $patterns =~ s/$TEX_INPUT_COMMAND/$input_patterns/xmgis;
@@ -332,7 +332,7 @@ Roland van Ipenburg, E<lt>ipenburg@xs4all.nlE<gt>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2015 by Roland van Ipenburg
+Copyright 2018 by Roland van Ipenburg
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,
