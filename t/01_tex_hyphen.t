@@ -7,7 +7,7 @@ use utf8;
 use open ':std', ':locale';
 use Test::More;
 
-our $VERSION = 0.100;
+our $VERSION = v1.1.1;
 
 eval {
     require TeX::Hyphen;

@@ -1,4 +1,4 @@
-package TeX::Hyphen::Pattern 0.100;    # -*- cperl; cperl-indent-level: 4 -*-
+package TeX::Hyphen::Pattern v1.1.1;    # -*- cperl; cperl-indent-level: 4 -*-
 use Moose;
 use 5.014000;
 use utf8;
@@ -32,10 +32,26 @@ Readonly::Scalar my $TEX_MESSAGE        => q{\\\message};
 
 Readonly::Scalar my $ERR_CANT_WRITE => q{Can't write to file '%s', stopped %s};
 
+Readonly::Hash my %FALLBACK => (
+    'De_DE' => q{De_1996_ec},
+    'Af_za' => q{Af_ec},
+    'Da_DK' => q{Da_ec},
+    'Et_ee' => q{Et_ec},
+    'Fr_fr' => q{Fr_ec},
+    'It_it' => q{It},
+    'Lt_lt' => q{Lt},
+    'Nl_nl' => q{Nl},
+    'Pl_pl' => q{Pl},
+    'Pt_br' => q{Pt},
+    'Sh'    => q{Sh_latn},
+    'Sl'    => q{Sl},
+);
+
 Readonly::Hash my %LOG => (
     'MATCH_MODULE'      => q{Looking for a match for '%s'},
     'NO_MATCH_CS'       => q{No case sensitive pattern match found for '%s'},
     'NO_MATCH_CI'       => q{No case insensitive pattern match found for '%s'},
+    'NO_MATCH_PARTIAL'  => q{No partial pattern match found for '%s'},
     'NO_MATCH'          => q{No pattern match found for '%s'},
     'MATCHES'           => q{Pattern match(es) found '%s'},
     'CACHE_HIT'         => q{Cache hit for '%s'},
@@ -133,6 +149,7 @@ sub _replug {
     my ($self) = @_;
     my $module = ucfirst $self->label;
     $module =~ s/$DASH/$UNDERSCORE/xmgis;
+    my $label = $module;
     $module = $PLUGGABLE . $module;
 
     # Find a match with decreasing strictness:
@@ -145,6 +162,13 @@ sub _replug {
     if ( !@available ) {
         $log->warn( sprintf $LOG{'NO_MATCH_CI'}, $module );
         @available = grep { /^$module/xmgis } $self->available();
+    }
+    if ( !@available ) {
+        $log->warn( sprintf $LOG{'NO_MATCH_PARTIAL'}, $module );
+        if ( exists $FALLBACK{$label} ) {
+            $module = $PLUGGABLE . $FALLBACK{$label};
+            @available = grep { /^$module/xmgis } $self->available();
+        }
     }
     @available = sort @available;
     $log->info( sprintf $LOG{'MATCHES'}, join q{, }, @available );
@@ -179,7 +203,7 @@ patterns for use with TeX::Hyphen.
 
 =head1 VERSION
 
-This is version 0.100. To prevent plugging in of incompatible modules the
+This is version v1.1.1. To prevent plugging in of incompatible modules the
 version of the pluggable modules must be the same as this module.
 
 =head1 SYNOPSIS
@@ -279,7 +303,7 @@ L<TeX::Hyphen|TeX::Hyphen>.  Versions up to and including 0.140 don't support
 C<utf8>, so patterns using C<utf8> that are included in this package have a
 version number 0.00 to ignore them. Should you patch
 L<TeX::Hyphen|TeX::Hyphen> yourself by inserting a C<binmode FILE, ":utf8";>
-you can change those version numbers to 0.100 to include them.
+you can change those version numbers to v1.1.1 to include them.
 
 =back
 
@@ -332,7 +356,7 @@ Roland van Ipenburg, E<lt>ipenburg@xs4all.nlE<gt>
 
 =head1 LICENSE AND COPYRIGHT
 
-Copyright 2018 by Roland van Ipenburg
+Copyright 2019 by Roland van Ipenburg
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.0 or,
