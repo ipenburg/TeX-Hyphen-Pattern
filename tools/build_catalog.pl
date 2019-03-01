@@ -5,7 +5,7 @@ use warnings;
 use utf8;
 use 5.014000;
 
-BEGIN { our $VERSION = 'v1.1.1'; }
+BEGIN { our $VERSION = 'v1.1.2'; }
 
 use Carp qw(croak);
 use Cwd qw(abs_path);

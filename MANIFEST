@@ -19,6 +19,7 @@ t/perlcriticrc
 tools/build_catalog.pl
 tools/build_catalog_from_ctan.pl
 lib/TeX/Hyphen/Pattern.pm
+lib/TeX/Hyphen/Pattern/Af_ZA.pm
 lib/TeX/Hyphen/Pattern/Af_ec.pm
 lib/TeX/Hyphen/Pattern/Bg_t2a.pm
 lib/TeX/Hyphen/Pattern/Ca_ec.pm
@@ -27,6 +28,7 @@ lib/TeX/Hyphen/Pattern/Cy_ec.pm
 lib/TeX/Hyphen/Pattern/Da_ec.pm
 lib/TeX/Hyphen/Pattern/De_1901_ec.pm
 lib/TeX/Hyphen/Pattern/De_1996_ec.pm
+lib/TeX/Hyphen/Pattern/De_DE.pm
 lib/TeX/Hyphen/Pattern/De_ch_1901_ec.pm
 lib/TeX/Hyphen/Pattern/Eo_il3.pm
 lib/TeX/Hyphen/Pattern/Es_ec.pm
@@ -52,12 +54,15 @@ lib/TeX/Hyphen/Pattern/Nb_ec.pm
 lib/TeX/Hyphen/Pattern/Nl_ec.pm
 lib/TeX/Hyphen/Pattern/Nn_ec.pm
 lib/TeX/Hyphen/Pattern/Pl_qx.pm
+lib/TeX/Hyphen/Pattern/Pt_BR.pm
 lib/TeX/Hyphen/Pattern/Pt_ec.pm
 lib/TeX/Hyphen/Pattern/Ro_ec.pm
 lib/TeX/Hyphen/Pattern/Ru_t2a.pm
+lib/TeX/Hyphen/Pattern/Sh.pm
 lib/TeX/Hyphen/Pattern/Sh_cyrl_t2a.pm
 lib/TeX/Hyphen/Pattern/Sh_latn_ec.pm
 lib/TeX/Hyphen/Pattern/Sk_ec.pm
+lib/TeX/Hyphen/Pattern/Sl_SI.pm
 lib/TeX/Hyphen/Pattern/Sl_ec.pm
 lib/TeX/Hyphen/Pattern/Sv_ec.pm
 lib/TeX/Hyphen/Pattern/Th_lth.pm
@@ -147,5 +152,6 @@ lib/TeX/Hyphen/Pattern/Tk.pm
 lib/TeX/Hyphen/Pattern/Tr.pm
 lib/TeX/Hyphen/Pattern/Uk.pm
 lib/TeX/Hyphen/Pattern/Zh_latn_pinyin.pm
+lib/TeX/Hyphen/Pattern/Zu_ZA.pm
 META.yml
 META.json

@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use Module::Build;
 Module::Build->new(
-    module_name => 'Tex::Hyphen::Pattern',
+    module_name => 'TeX::Hyphen::Pattern',
     license     => 'perl',
     dist_author => 'Roland van Ipenburg <ipenburg@xs4all.nl>',
     requires    => {
